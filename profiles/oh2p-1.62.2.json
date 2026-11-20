@@ -1,0 +1,17 @@
+{
+  "id": "oh2p-1.62.2",
+  "model": "OH2P",
+  "firmware": "1.62.2",
+  "userspace_target": "armv7-linux-gnueabihf",
+  "status": "reference-only-not-a-detection-result",
+  "flash_implemented": false,
+  "requirements": [
+    "read_actual_device_identity",
+    "match_firmware_and_model",
+    "verify_release_image_checksum_and_origin",
+    "backup_and_verify_before_write",
+    "explicit_flash_confirmation",
+    "readback_verification",
+    "documented_recovery_path"
+  ]
+}
