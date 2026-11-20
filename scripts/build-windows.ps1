@@ -20,7 +20,7 @@ try {
         go build -trimpath -o "$package/xiyue-flasher.exe" .
         if ($LASTEXITCODE -ne 0) { throw "Build failed: $arch" }
         Copy-Item profiles/oh2p-1.62.2.json "$package/profiles/"
-        Copy-Item README.html, LICENSE $package
+        Copy-Item README.html, LICENSE, scripts/start-wizard.cmd $package
         if ($arch -eq 'amd64' -and $IsWindows -and $env:PROCESSOR_ARCHITECTURE -eq 'AMD64') {
             & "$package/xiyue-flasher.exe" profile
             if ($LASTEXITCODE -ne 0) { throw 'Windows executable smoke test failed' }

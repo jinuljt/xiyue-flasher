@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>喜悦 · 离线安装预检与发布包</title><style>body{font:16px/1.8 system-ui,sans-serif;color:#243b30;background:#f7f8f3;margin:0}main{max-width:1000px;margin:auto;padding:36px 24px}h1,h2{line-height:1.4}h2{margin-top:36px}a{color:#286349}table{border-collapse:collapse;width:100%;background:white}th,td{text-align:left;border:1px solid #dce3d9;padding:10px;vertical-align:top}pre{padding:16px;background:#263b2e;color:#eef4e7;border-radius:8px;overflow:auto}code{font:14px ui-monospace,monospace;overflow-wrap:anywhere}.note{padding:16px;background:#eaf0e5;border-left:4px solid #76976a}footer{margin-top:36px;color:#56675c}@media(max-width:650px){main{padding:20px 14px}table{font-size:13px}}</style></head><body><main>
 <h1>喜悦 · 离线安装预检与发布包</h1>
-<p class="note">已实现可执行的离线软件检查。当前没有 USB 自动识别、Windows 图形安装向导、分区备份、刷写、设备重启或真实硬件恢复功能。所有成功结果仍包含 <code>flash_allowed: false</code>、<code>hardware_verified: false</code>。</p>
+<p class="note">已实现可执行的离线软件检查。当前没有 USB 自动识别、Windows 真机安装向导、分区备份、刷写、设备重启或真实硬件恢复功能。所有成功结果仍包含 <code>flash_allowed: false</code>、<code>hardware_verified: false</code>。</p>
 <h2>支持范围与实际输入</h2>
 <p>只接受参考档案 <code>profiles/oh2p-1.62.2.json</code>：OH2P、固件 1.62.2、<code>armv7-linux-gnueabihf</code>。档案本身不能证明设备兼容性。修改型号、固件、目标、刷写标志或必需门槛会被拒绝。</p>
 <p>身份 JSON 含 <code>model</code>、<code>firmware</code>、<code>userspace_target</code> 和 <code>source</code>。source 只接受 manual（人工抄录）或 fixture（软件模拟）；示例 <code>examples/identity.fixture.json</code> 是模拟输入。手工填写 OH2P 不会被报告为 USB 识别。设备身份与备份是否来自同一台真实设备，仍须后续设备读取接口验证。</p>
@@ -13,7 +13,7 @@ go build -trimpath -o dist/xiyue-flasher .
 <p>Windows 脚本先执行本机测试和 vet，再生成 Windows amd64、arm64 EXE，连同档案、本文和许可证打成 ZIP，并产生 ZIP 的 SHA-256 文件。原生 amd64 Windows 还会运行 EXE 的 profile 冒烟检查。<code>.github/workflows/windows.yml</code> 提供 Windows CI，并上传这些产物；本次没有 push 或触发远端 CI。</p>
 <p><strong>本次验证结果（2026-11-20）：</strong>macOS 上 Go 软件测试（含 race）、vet 通过，Windows amd64 / arm64 交叉编译通过，PE 文件格式已核对。没有 Windows 主机或 PowerShell 运行环境，因此 Windows 原生测试、PowerShell ZIP 脚本与下载解压流程尚未实跑。交叉编译通过不等于 Windows 已验收。EXE / ZIP 尚无生产签名或 Authenticode；同源下载的摘要文件只检损坏，不能独立证明发布者身份。</p>
 <h2>命令与结果</h2>
-<p>在包含 profiles 目录的工作目录执行；也可显式传入 <code>--profile</code>。所有命令输出一行 JSON，成功退出码 0，失败 1。错误输出含 <code>ok: false</code> 与原因。没有任何命令打开设备或执行外部安装脚本。</p>
+<p>在包含 profiles 目录的工作目录执行；也可显式传入 <code>--profile</code>。除图形预检向导外，命令输出一行 JSON，成功退出码 0，失败 1。错误输出含 <code>ok: false</code> 与原因。没有任何命令打开设备或执行外部安装脚本。</p>
 <pre>xiyue-flasher profile
 xiyue-flasher backup --source ./application-copy --backup ./local-backup
 xiyue-flasher verify-backup --backup ./local-backup
@@ -34,7 +34,7 @@ xiyue-flasher check-restore --backup ./local-backup --restored ./restored-applic
 <pre># 由密钥设施通过 stdin 注入；不要把私钥直接键入命令行
 xiyue-flasher seal-release --release ./release-stage --spec ./release-spec.json</pre>
 <p><code>release.sig</code> 为 base64 Ed25519 签名，签名对象是 <code>release.json</code> 的完整原始字节（包括末尾换行）；不做 JSON 重排。公钥文件内容为 base64 编码的 32 字节 Ed25519 公钥。用户必须通过独立可信渠道取得公钥；不从发布包读取自声明公钥。验签后检查档案、四组件与全目录摘要，拒绝多余文件、缺文件、错误长度、摘要变化、符号链接、路径穿越、Windows 特殊路径和大小写冲突。</p>
-<p>这份接口是 Flasher 的接入契约，尚未证明 Agent 发布流水线已生成同格式真实包。签名验证证明“持有对应私钥者签署过这些字节”；不会证明 ELF 架构、模型/语音可用、许可证、漏洞安全、版本新旧或真机兼容。生产发布仍需独立的可信公钥分发、发布审批与真机验证；不能把示例或测试用随机签名当作正式发布。</p>
+<p>工作区发布脚本使用同一接口生成了 ARMv7 签名应用包，并通过离线预检。签名验证证明“持有对应私钥者签署过这些字节”；不会证明 ELF 架构、模型/语音可用、许可证、漏洞安全、版本新旧或真机兼容。生产发布仍需独立的可信公钥分发、发布审批与真机验证；不能把示例或测试用随机签名当作正式发布。</p>
 <h2>应用备份与恢复核对</h2>
 <p><code>backup</code> 仅复制指定应用目录到一个不存在的新目录，生成 <code>snapshot.json</code>，并立即逐文件读回核对。备份目的地必须在源目录外；拒绝已有目录，失败时删除本次创建的不完整目录。源目录请先停写，以免变化导致核对失败。macOS/Linux 使用私有目录和文件权限；Windows 备份位置仍需用户确认 NTFS ACL。</p>
 <p>snapshot 的 schema 为 1，scope 必须是 <code>application-files-only</code>，profile 为当前档案，files 与发布文件清单格式相同。verify-backup 核对备份目录；check-restore 先核对备份，再核对用户已经恢复到另一目录的文件，不覆盖任何文件。恢复目录应只包含快照内的应用文件，不包含 snapshot.json。</p>
@@ -46,5 +46,6 @@ xiyue-flasher seal-release --release ./release-stage --spec ./release-spec.json<
 <tr><td>真实设备身份与安装</td><td>未实现：通过设备接口读取实际身份，供电/线材/驱动预检、明确刷写确认、安装写入和读回、配对与独立运行。身份不是用户键入的型号。</td></tr>
 <tr><td>真实硬件恢复</td><td>未实现：设备分区备份、断电/中断演练、可操作救援与回退、恢复后原生助手及喜悦共存验证。必须单独授权并验收，不以文件比对替代。</td></tr>
 </tbody></table>
-<footer>喜悦 · 2026-11-20 · 本次仅本地软件与模拟测试，无音箱操作、真实付费服务、发布或 push。</footer>
+
+<h2>图形预检</h2><p>Windows 发布包包含 <code>start-wizard.cmd</code>。解压后双击，浏览器会打开本机预检页面。依次选择或填写设备资料 JSON、签名应用包目录、独立来源的验签公钥文件及应用备份目录。离线预检通过也需要进行真实设备身份、安装和恢复验收。命令行可使用 <code>xiyue-flasher wizard</code> 启动同一页面。</p><h2>应用更新与回退</h2><p><code>stage-app</code> 将签名并校验通过的版本复制到应用目录，返回按发布清单计算的版本编号。<code>activate-app</code> 重新核验并切换当前版本。<code>rollback-app</code> 验证并切回上次版本，<code>resolve-app</code> 返回当前版本目录。均需给出 <code>-app-store</code> 和可信公开验签密钥 <code>-trusted-key</code>。应用数据须单独保存，激活时不能并行运行多个安装操作。服务接入、断电保护和真实系统分区恢复仍需设备验收。</p><footer>喜悦 · 2026-11-20 · 本次仅本地软件与模拟测试，无音箱操作、真实付费服务、发布或 push。</footer>
 </main></body></html>

@@ -226,10 +226,29 @@ func compare(root string, expected []File, excluded map[string]bool) error {
 	}
 	return nil
 }
+
+const (
+	maxManifestBytes = 1 << 20
+	maxKeyBytes      = 4 << 10
+)
+
+func readReleaseMetadata(name string, limit int64) ([]byte, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if int64(len(data)) > limit {
+		return nil, errors.New("release metadata exceeds its size limit")
+	}
+	return data, err
+}
+
 func verifyRelease(root, keyPath string, p Profile) (Release, error) {
 	var r Release
 	// Trust comes from the caller's independently obtained key, never the package.
-	keyText, err := os.ReadFile(keyPath)
+	keyText, err := readReleaseMetadata(keyPath, maxKeyBytes)
 	if err != nil {
 		return r, err
 	}
@@ -237,11 +256,11 @@ func verifyRelease(root, keyPath string, p Profile) (Release, error) {
 	if err != nil || len(key) != ed25519.PublicKeySize {
 		return r, errors.New("invalid trusted Ed25519 public key")
 	}
-	data, err := os.ReadFile(filepath.Join(root, "release.json"))
+	data, err := readReleaseMetadata(filepath.Join(root, "release.json"), maxManifestBytes)
 	if err != nil {
 		return r, err
 	}
-	sigText, err := os.ReadFile(filepath.Join(root, "release.sig"))
+	sigText, err := readReleaseMetadata(filepath.Join(root, "release.sig"), maxKeyBytes)
 	if err != nil {
 		return r, err
 	}
@@ -446,7 +465,7 @@ func verifyBackup(root, restored string, p Profile) error {
 }
 func run(args []string) (map[string]any, error) {
 	if len(args) == 0 {
-		return nil, errors.New("use profile, seal-release, preflight, backup, verify-backup, or check-restore")
+		return nil, errors.New("use profile, seal-release, preflight, backup, verify-backup, check-restore, stage-app, activate-app, rollback-app, resolve-app, or wizard")
 	}
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -458,6 +477,8 @@ func run(args []string) (map[string]any, error) {
 	source := flags.String("source", "", "application files source")
 	backupPath := flags.String("backup", "", "backup directory")
 	restored := flags.String("restored", "", "already restored application directory (read only)")
+	appStore := flags.String("app-store", "", "application-only release storage directory")
+	appVersion := flags.String("app-version", "", "staged release ID")
 	if err := flags.Parse(args[1:]); err != nil {
 		return nil, err
 	}
@@ -500,6 +521,26 @@ func run(args []string) (map[string]any, error) {
 		result["release_version"] = r.Version
 		result["status"] = "offline-inputs-verified"
 		result["pending_gates"] = []string{"actual-device-identity", "power-cable-driver-check", "explicit-flash-confirmation", "hardware-install-and-readback", "hardware-recovery-drill", "agent-pairing-and-runtime"}
+	case "stage-app":
+		if *appStore == "" || *release == "" || *key == "" {
+			return nil, errors.New("stage-app requires app-store, release and trusted-key")
+		}
+		id, e := stageApp(*release, *key, *appStore, p)
+		if e != nil {
+			return nil, e
+		}
+		result["app_version"] = id
+	case "activate-app", "rollback-app", "resolve-app":
+		if *appStore == "" || *key == "" {
+			return nil, errors.New("application selection requires app-store and trusted-key")
+		}
+		state, e := selectApp(*appStore, *appVersion, *key, p, args[0])
+		if e != nil {
+			return nil, e
+		}
+		result["active_version"] = state.Current
+		result["previous_version"] = state.Previous
+		result["application_directory"] = filepath.Join(*appStore, "versions", state.Current)
 	case "backup":
 		if *source == "" || *backupPath == "" {
 			return nil, errors.New("backup requires source and backup")
@@ -524,6 +565,13 @@ func run(args []string) (map[string]any, error) {
 	return result, err
 }
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "wizard" {
+		if err := runWizard(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	result, err := run(os.Args[1:])
 	if err != nil {
 		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": false, "error": err.Error(), "flash_allowed": false, "hardware_verified": false})
