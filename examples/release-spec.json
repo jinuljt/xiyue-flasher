@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "version": "development-example",
+  "profile": "oh2p-1.62.2",
+  "userspace_target": "armv7-linux-gnueabihf",
+  "components": {
+    "agent": {"version": "replace-with-agent-commit", "path": "agent/xiyue-agent"},
+    "console": {"version": "replace-with-console-commit", "path": "console/index.html"},
+    "wiki": {"version": "replace-with-wiki-commit", "path": "console/help.html"},
+    "abilities": {"version": "replace-with-abilities-commit", "path": "abilities/manifest.schema.json"}
+  },
+  "files": []
+}

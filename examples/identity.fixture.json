@@ -1,0 +1,6 @@
+{
+  "model": "OH2P",
+  "firmware": "1.62.2",
+  "userspace_target": "armv7-linux-gnueabihf",
+  "source": "fixture"
+}
