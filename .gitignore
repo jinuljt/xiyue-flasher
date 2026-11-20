@@ -7,3 +7,7 @@
 *.pem
 *.key
 *.log
+.env
+.env.*
+!.env.example
+*.p12
