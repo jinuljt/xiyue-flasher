@@ -16,7 +16,7 @@ import (
 
 var wizardPage = template.Must(template.New("wizard").Parse(`<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>喜悦音箱安装预检</title>
+<title>喜悦 Voice 音箱安装预检</title>
 <style>
 body{font:16px/1.55 system-ui,sans-serif;background:#f3f6f2;color:#1a3028;margin:0}
 main{max-width:620px;margin:32px auto;background:white;padding:24px;border:1px solid #cfdbd3;border-radius:14px}
@@ -25,7 +25,7 @@ input:not([type=hidden]){display:block;width:100%;border:1px solid #7a9185;borde
 button{margin-top:16px;background:#245540;color:white;border:0;border-radius:6px}
 .success,.error{padding:10px;border:1px solid;border-radius:6px}.success{color:#245540}.error{color:#94332d}
 </style></head><body><main>
-<h1>喜悦音箱安装预检</h1>
+<h1>喜悦 Voice 音箱安装预检</h1>
 <p>检查 OH2P 参考档案、签名应用包和应用文件备份。本工具不写入音箱。</p>
 <form action="/" method="post">
 <input type="hidden" name="token" value="{{.Token}}">
@@ -99,7 +99,7 @@ func runWizard() error {
 	defer listener.Close()
 	host := listener.Addr().String()
 	address := "http://" + host + "/"
-	fmt.Println("喜悦安装预检：" + address)
+	fmt.Println("喜悦 Voice 安装预检：" + address)
 	if runtime.GOOS == "windows" {
 		if command, err := exec.LookPath("rundll32.exe"); err == nil {
 			_ = exec.Command(command, "url.dll,FileProtocolHandler", address).Run()
