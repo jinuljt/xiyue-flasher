@@ -28,6 +28,12 @@ label{display:block;margin:14px 0} input,button{font:inherit;padding:8px;box-siz
 input:not([type=hidden]){display:block;width:100%;border:1px solid #7a9185;border-radius:6px}
 button{background:#245540;color:white;border:0;border-radius:6px}
 [role=alert]{color:#94332d}
+.password-strength{display:flex;align-items:center;gap:9px;font-size:.85em;margin:4px 0 14px}
+.password-strength[hidden]{display:none}.strength-bar{width:72px;height:5px;border-radius:4px}
+.password-strength[data-level=weak]{color:#9a302b}.password-strength[data-level=weak] .strength-bar{background:linear-gradient(to right,#b94038 33%,#dfe5df 33%)}
+.password-strength[data-level=medium]{color:#805715}.password-strength[data-level=medium] .strength-bar{background:linear-gradient(to right,#b98121 66%,#dfe5df 66%)}
+.password-strength[data-level=strong]{color:#235e40}.password-strength[data-level=strong] .strength-bar{background:#337f55}
+
 </style></head><body><main>
 <h1>{{if .Done}}安装完成{{else}}设置管理员{{end}}</h1>
 {{if .Done}}<p>使用刚设置的用户名和密码登录喜悦。</p><p><a href="{{.Console}}">打开喜悦控制台</a></p>
@@ -35,11 +41,37 @@ button{background:#245540;color:white;border:0;border-radius:6px}
 <form method="post" action="/">
 <input type="hidden" name="form_token" value="{{.Token}}">
 <label>用户名<input name="username" required autocomplete="username" maxlength="64"></label>
-<label>密码<input name="password" type="password" required autocomplete="new-password" minlength="12" maxlength="256"></label>
-<label>确认密码<input name="confirmation" type="password" required autocomplete="new-password" minlength="12" maxlength="256"></label>
+<label>密码<input id="install-password" name="password" type="password" required autocomplete="new-password" maxlength="256"></label>
+<p id="password-strength" class="password-strength" role="status" hidden><span class="strength-bar" aria-hidden="true"></span><span class="strength-label"></span></p>
+<label>确认密码<input name="confirmation" type="password" required autocomplete="new-password" maxlength="256"></label>
 {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}
 <button type="submit">保存并完成安装</button></form>{{end}}
-</main></body></html>`))
+</main>{{if not .Done}}<script src="/password-strength.js" defer></script>{{end}}</body></html>`))
+
+const installerStrengthJS = `
+function updatePasswordStrength(input, meter) {
+  const password = input.value;
+  meter.hidden = password === '';
+  if (meter.hidden) return;
+  const length = [...password].length;
+  const variety = new Set(password).size;
+  const groups = [/[a-z]/, /[A-Z]/, /\d/, /[^a-zA-Z\d\s]/].filter(test => test.test(password)).length;
+  const common = /^(?:password|qwerty|admin|abc123|123456)(?:\d|!)*$/i.test(password);
+  let level = 'weak';
+  if (!common && length >= 8 && variety >= 5) {
+    level = length >= 12 && variety >= 8 && (groups >= 3 || length >= 16) ? 'strong' : 'medium';
+  }
+  meter.dataset.level = level;
+  meter.querySelector('.strength-label').textContent = {
+    weak: '弱 · 建议换一个更难猜的密码', medium: '中', strong: '强'
+  }[level];
+}
+
+const input = document.getElementById('install-password');
+const meter = document.getElementById('password-strength');
+input.addEventListener('input', () => updatePasswordStrength(input, meter));
+updatePasswordStrength(input, meter);
+`
 
 func adminSetupHandler(host, console, token string, provision func(context.Context, string, string) error) http.Handler {
 	var mu sync.Mutex
@@ -47,9 +79,14 @@ func adminSetupHandler(host, console, token string, provision func(context.Conte
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
 		if r.Host != host {
 			http.Error(w, "invalid installer host", 403)
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/password-strength.js" {
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			_, _ = w.Write([]byte(installerStrengthJS))
 			return
 		}
 		if r.URL.Path != "/" {
@@ -72,8 +109,8 @@ func adminSetupHandler(host, console, token string, provision func(context.Conte
 				username := strings.TrimSpace(r.PostForm.Get("username"))
 				password := r.PostForm.Get("password")
 				switch {
-				case username == "" || len(username) > 64 || len(password) > 256 || len([]rune(password)) < 12:
-					issue = "请填写有效的用户名和至少 12 个字符的密码。"
+				case username == "" || len(username) > 64 || password == "" || len(password) > 256:
+					issue = "请填写有效的用户名和密码。"
 				case password != r.PostForm.Get("confirmation"):
 					issue = "两次输入的密码不一致。"
 				default:

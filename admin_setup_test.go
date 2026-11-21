@@ -13,7 +13,7 @@ func TestAdminSetupAcceptsLocalFormAndDoesNotEchoPassword(t *testing.T) {
 	const host = "127.0.0.1:8477"
 	const console = "https://speaker.test/"
 	const formToken = "synthetic-form-token"
-	const password = "synthetic-password"
+	const password = "x"
 	var calls int
 	handler := adminSetupHandler(host, console, formToken, func(_ context.Context, name, secret string) error {
 		calls++
@@ -39,9 +39,15 @@ func TestAdminSetupAcceptsLocalFormAndDoesNotEchoPassword(t *testing.T) {
 	}
 	for i := 0; i < 2; i++ {
 		w := send("http://"+host, password)
-		if !strings.Contains(w.Body.String(), console) || strings.Contains(w.Body.String(), password) {
+		if !strings.Contains(w.Body.String(), console) || strings.Contains(w.Body.String(), `value="x"`) {
 			t.Fatal("installer didn't render a safe success page")
 		}
+	}
+	r := httptest.NewRequest("GET", "http://"+host+"/password-strength.js", nil)
+	script := httptest.NewRecorder()
+	handler.ServeHTTP(script, r)
+	if script.Code != http.StatusOK || !strings.Contains(script.Body.String(), "strength-label") {
+		t.Fatal("password strength script is unavailable")
 	}
 	if calls != 1 {
 		t.Fatalf("credentials were saved %d times", calls)
