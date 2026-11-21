@@ -565,6 +565,17 @@ func run(args []string) (map[string]any, error) {
 	return result, err
 }
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "setup-admin" {
+		if len(os.Args) < 5 || os.Args[3] != "--" {
+			fmt.Fprintln(os.Stderr, "用法：setup-admin https://音箱地址:端口/ -- 安装传输命令")
+			os.Exit(1)
+		}
+		if err := runAdminSetup(os.Args[2], os.Args[4:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) == 2 && os.Args[1] == "wizard" {
 		if err := runWizard(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
