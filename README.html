@@ -47,6 +47,6 @@ xiyue-flasher seal-release --release ./release-stage --spec ./release-spec.json<
 <tr><td>真实硬件恢复</td><td>未实现：设备分区备份、断电/中断演练、可操作救援与回退、恢复后原生助手及喜悦共存验证。必须单独授权并验收，不以文件比对替代。</td></tr>
 </tbody></table>
 
-<h2>图形预检</h2><p>Windows 发布包包含 <code>start-wizard.cmd</code>。解压后双击，浏览器会打开本机预检页面。依次选择或填写设备资料 JSON、签名应用包目录、独立来源的验签公钥文件及应用备份目录。离线预检通过也需要进行真实设备身份、安装和恢复验收。命令行可使用 <code>xiyue-flasher wizard</code> 启动同一页面。</p><h2>设置管理员</h2><p>安装流程确认设备上的 Agent 已启动后，打开管理员设置页。用户填写用户名及两次密码，保存后直接打开设备控制台。调用方式为 <code>xiyue-flasher setup-admin https://音箱地址:端口/ -- 安装传输命令</code>。传输命令由安装流程选定，用受信任通道调用 Agent 的本机管理员安装入口。登录凭据经标准输入传输。</p><p>管理员表单可用于已能访问的设备。全自动 Windows USB 写入流程仍待接入设备识别、安装与恢复。</p>
+<h2>图形预检</h2><p>Windows 发布包包含 <code>start-wizard.cmd</code>。解压后双击，浏览器会打开本机预检页面。依次选择或填写设备资料 JSON、签名应用包目录、独立来源的验签公钥文件及应用备份目录。离线预检通过也需要进行真实设备身份、安装和恢复验收。命令行可使用 <code>xiyue-flasher wizard</code> 启动同一页面。</p><p>设备安装后，请直接打开音箱控制台。首次管理员设置和日常管理均由音箱提供。</p>
 <h2>应用更新与回退</h2><p><code>stage-app</code> 将签名并校验通过的版本复制到应用目录，返回按发布清单计算的版本编号。<code>activate-app</code> 重新核验并切换当前版本。<code>rollback-app</code> 验证并切回上次版本，<code>resolve-app</code> 返回当前版本目录。均需给出 <code>-app-store</code> 和可信公开验签密钥 <code>-trusted-key</code>。应用数据须单独保存，激活时不能并行运行多个安装操作。服务接入、断电保护和真实系统分区恢复仍需设备验收。</p><footer>喜悦 · 2026-11-20 · 本次仅本地软件与模拟测试，无音箱操作、真实付费服务、发布或 push。</footer>
 </main></body></html>
