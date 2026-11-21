@@ -35,6 +35,7 @@ xiyue-flasher check-restore --backup ./local-backup --restored ./restored-applic
 xiyue-flasher seal-release --release ./release-stage --spec ./release-spec.json</pre>
 <p><code>release.sig</code> 为 base64 Ed25519 签名，签名对象是 <code>release.json</code> 的完整原始字节（包括末尾换行）；不做 JSON 重排。公钥文件内容为 base64 编码的 32 字节 Ed25519 公钥。用户必须通过独立可信渠道取得公钥；不从发布包读取自声明公钥。验签后检查档案、四组件与全目录摘要，拒绝多余文件、缺文件、错误长度、摘要变化、符号链接、路径穿越、Windows 特殊路径和大小写冲突。</p>
 <p>工作区发布脚本使用同一接口生成了 ARMv7 签名应用包，并通过离线预检。签名验证证明“持有对应私钥者签署过这些字节”；不会证明 ELF 架构、模型/语音可用、许可证、漏洞安全、版本新旧或真机兼容。生产发布仍需独立的可信公钥分发、发布审批与真机验证；不能把示例或测试用随机签名当作正式发布。</p>
+<p>与 OH2P 设备档案核对的固件仍使用同一参考身份。对于已验证能运行静态 ARM64 程序的内核，应用包可声明 <code>aarch64-linux</code>。发布及验证同时核对 Agent 的 ELF 架构和静态加载要求。</p>
 <h2>应用备份与恢复核对</h2>
 <p><code>backup</code> 仅复制指定应用目录到一个不存在的新目录，生成 <code>snapshot.json</code>，并立即逐文件读回核对。备份目的地必须在源目录外；拒绝已有目录，失败时删除本次创建的不完整目录。源目录请先停写，以免变化导致核对失败。macOS/Linux 使用私有目录和文件权限；Windows 备份位置仍需用户确认 NTFS ACL。</p>
 <p>snapshot 的 schema 为 1，scope 必须是 <code>application-files-only</code>，profile 为当前档案，files 与发布文件清单格式相同。verify-backup 核对备份目录；check-restore 先核对备份，再核对用户已经恢复到另一目录的文件，不覆盖任何文件。恢复目录应只包含快照内的应用文件，不包含 snapshot.json。</p>

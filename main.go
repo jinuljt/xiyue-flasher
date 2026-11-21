@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"debug/elf"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -274,10 +275,37 @@ func verifyRelease(root, keyPath string, p Profile) (Release, error) {
 	if err = validateRelease(r, p); err != nil {
 		return r, err
 	}
-	return r, compare(root, r.Files, map[string]bool{"release.json": true, "release.sig": true})
+	if err := compare(root, r.Files, map[string]bool{"release.json": true, "release.sig": true}); err != nil {
+		return r, err
+	}
+	return r, validateAgentTarget(root, r)
 }
+
+const arm64Target = "aarch64-linux"
+
+func validateAgentTarget(root string, r Release) error {
+	if r.Target != arm64Target {
+		return nil
+	}
+	agent, err := elf.Open(filepath.Join(root, filepath.FromSlash(r.Components["agent"].Path)))
+	if err != nil {
+		return errors.New("无法读取 ARM64 Agent ELF")
+	}
+	defer agent.Close()
+	if agent.Machine != elf.EM_AARCH64 || agent.Class != elf.ELFCLASS64 || agent.Data != elf.ELFDATA2LSB ||
+		(agent.Type != elf.ET_EXEC && agent.Type != elf.ET_DYN) {
+		return errors.New("Agent 二进制与 ARM64 发布目标不匹配")
+	}
+	for _, segment := range agent.Progs {
+		if segment.Type == elf.PT_INTERP {
+			return errors.New("ARM64 Agent 必须为静态可执行文件")
+		}
+	}
+	return nil
+}
+
 func validateRelease(r Release, p Profile) error {
-	if r.Schema != 1 || strings.TrimSpace(r.Version) == "" || r.Profile != p.ID || r.Target != p.Target {
+	if r.Schema != 1 || strings.TrimSpace(r.Version) == "" || r.Profile != p.ID || (r.Target != p.Target && r.Target != arm64Target) {
 		return errors.New("release is incompatible with profile")
 	}
 	if len(r.Components) != 4 {
@@ -345,6 +373,9 @@ func sealRelease(root, spec string, keyInput io.Reader, p Profile) error {
 	sig := base64.StdEncoding.EncodeToString(ed25519.Sign(key, data)) + "\n"
 	// Validate the contract before writing either metadata file.
 	if err = validateRelease(r, p); err != nil {
+		return err
+	}
+	if err = validateAgentTarget(root, r); err != nil {
 		return err
 	}
 	for name, body := range map[string][]byte{"release.json": data, "release.sig": []byte(sig)} {
