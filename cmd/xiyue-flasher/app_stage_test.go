@@ -11,7 +11,7 @@ import (
 )
 
 func TestApplicationActivationAndRollbackPreserveVerifiedVersions(t *testing.T) {
-	p, err := profile("profiles/oh2p-1.62.2.json")
+	p, err := profile("../../profiles/oh2p-1.62.2.json")
 	if err != nil {
 		t.Fatal(err)
 	}

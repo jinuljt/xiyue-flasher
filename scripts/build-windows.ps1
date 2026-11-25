@@ -17,10 +17,10 @@ try {
         $env:GOARCH = $arch
         $package = "dist/xiyue-flasher-windows-$arch"
         New-Item -ItemType Directory -Force -Path "$package/profiles" | Out-Null
-        go build -trimpath -o "$package/xiyue-flasher.exe" .
+        go build -trimpath -o "$package/xiyue-flasher.exe" ./cmd/xiyue-flasher
         if ($LASTEXITCODE -ne 0) { throw "Build failed: $arch" }
         Copy-Item profiles/oh2p-1.62.2.json "$package/profiles/"
-        Copy-Item README.html, LICENSE, scripts/start-wizard.cmd $package
+        Copy-Item README.md, LICENSE, scripts/start-wizard.cmd $package
         if ($arch -eq 'amd64' -and $IsWindows -and $env:PROCESSOR_ARCHITECTURE -eq 'AMD64') {
             & "$package/xiyue-flasher.exe" profile
             if ($LASTEXITCODE -ne 0) { throw 'Windows executable smoke test failed' }

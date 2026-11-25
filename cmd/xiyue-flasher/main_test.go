@@ -30,7 +30,7 @@ func jsonFile(t *testing.T, name string, v any) {
 }
 func fixture(t *testing.T) (Profile, string, string, string, string) {
 	t.Helper()
-	p, e := profile("profiles/oh2p-1.62.2.json")
+	p, e := profile("../../profiles/oh2p-1.62.2.json")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -72,14 +72,14 @@ func TestOfflineFlow(t *testing.T) {
 	}
 	identity := filepath.Join(t.TempDir(), "identity.json")
 	jsonFile(t, identity, Identity{Model: p.Model, Firmware: p.Firmware, Target: p.Target, Source: "fixture"})
-	result, e := run([]string{"preflight", "--identity", identity, "--release", root, "--trusted-key", key, "--backup", b})
+	result, e := run([]string{"preflight", "--profile", "../../profiles/oh2p-1.62.2.json", "--identity", identity, "--release", root, "--trusted-key", key, "--backup", b})
 	if e != nil {
 		t.Fatal(e)
 	}
 	if result["flash_allowed"] != false || result["hardware_verified"] != false || result["usb_detection"] != false || result["identity_source"] != "fixture" {
 		t.Fatal(result)
 	}
-	result, e = run([]string{"check-restore", "--backup", b, "--restored", source})
+	result, e = run([]string{"check-restore", "--profile", "../../profiles/oh2p-1.62.2.json", "--backup", b, "--restored", source})
 	if e != nil || result["hardware_recovery_verified"] != false {
 		t.Fatal(result, e)
 	}
@@ -164,7 +164,7 @@ func TestTampering(t *testing.T) {
 	}
 }
 func TestTrustBoundaries(t *testing.T) {
-	p, e := profile("profiles/oh2p-1.62.2.json")
+	p, e := profile("../../profiles/oh2p-1.62.2.json")
 	if e != nil {
 		t.Fatal(e)
 	}
